@@ -56,6 +56,8 @@ SDLJoystick *joystick = NULL;
 #include "SDLGLGraphicsContext.h"
 #include "SDLVulkanGraphicsContext.h"
 
+#include "odroid.h"
+#include "kms_window.h"
 
 GlobalUIState lastUIState = UISTATE_MENU;
 GlobalUIState GetUIState();
@@ -124,7 +126,7 @@ void System_SendMessage(const char *command, const char *parameter) {
 }
 
 void System_AskForPermission(SystemPermission permission) {}
-PermissionStatus System_GetPermissionStatus(SystemPermission permission) { return PERMISSION_STATUS_GRANTED; }
+PermissionStatus System_GetPermissionStatus(SystemPermission permission) { return PERMISSION_STATUS_DENIED; }
 
 void OpenDirectory(const char *path) {
 #if defined(_WIN32)
@@ -357,58 +359,61 @@ int main(int argc, char *argv[]) {
 
 	glslang::InitializeProcess();
 
-#if PPSSPP_PLATFORM(RPI)
-	bcm_host_init();
-#endif
-	putenv((char*)"SDL_VIDEO_CENTERED=1");
-	SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
+// #if PPSSPP_PLATFORM(RPI)
+// 	bcm_host_init();
+// #endif
+// 	putenv((char*)"SDL_VIDEO_CENTERED=1");
+// 	SDL_SetHint(SDL_HINT_VIDEO_MINIMIZE_ON_FOCUS_LOSS, "0");
 
-	if (VulkanMayBeAvailable()) {
-		printf("DEBUG: Vulkan might be available.\n");
-	} else {
-		printf("DEBUG: Vulkan is not available, not using Vulkan.\n");
-	}
+// 	if (VulkanMayBeAvailable()) {
+// 		printf("DEBUG: Vulkan might be available.\n");
+// 	} else {
+// 		printf("DEBUG: Vulkan is not available, not using Vulkan.\n");
+// 	}
 
-	int set_xres = -1;
-	int set_yres = -1;
-	int w = 0, h = 0;
-	bool portrait = false;
-	bool set_ipad = false;
-	float set_dpi = 1.0f;
-	float set_scale = 1.0f;
+// 	int set_xres = -1;
+// 	int set_yres = -1;
+// 	int w = 0, h = 0;
+// 	bool portrait = false;
+// 	bool set_ipad = false;
+// 	float set_dpi = 1.0f;
+// 	float set_scale = 1.0f;
 
-	// Produce a new set of arguments with the ones we skip.
-	int remain_argc = 1;
-	const char *remain_argv[256] = { argv[0] };
+// 	// Produce a new set of arguments with the ones we skip.
+ 	int remain_argc = 1;
+ 	const char *remain_argv[256] = { argv[0] };
 
 	Uint32 mode = 0;
 	for (int i = 1; i < argc; i++) {
-		if (!strcmp(argv[i],"--fullscreen"))
-			mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-		else if (set_xres == -2)
-			set_xres = parseInt(argv[i]);
-		else if (set_yres == -2)
-			set_yres = parseInt(argv[i]);
-		else if (set_dpi == -2)
-			set_dpi = parseFloat(argv[i]);
-		else if (set_scale == -2)
-			set_scale = parseFloat(argv[i]);
-		else if (!strcmp(argv[i],"--xres"))
-			set_xres = -2;
-		else if (!strcmp(argv[i],"--yres"))
-			set_yres = -2;
-		else if (!strcmp(argv[i],"--dpi"))
-			set_dpi = -2;
-		else if (!strcmp(argv[i],"--scale"))
-			set_scale = -2;
-		else if (!strcmp(argv[i],"--ipad"))
-			set_ipad = true;
-		else if (!strcmp(argv[i],"--portrait"))
-			portrait = true;
-		else {
-			remain_argv[remain_argc++] = argv[i];
-		}
+		// if (!strcmp(argv[i],"--fullscreen"))
+		// 	//mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+		// else if (set_xres == -2)
+		// 	//set_xres = parseInt(argv[i]);
+		// else if (set_yres == -2)
+		// 	//set_yres = parseInt(argv[i]);
+		// else if (set_dpi == -2)
+		// 	//set_dpi = parseFloat(argv[i]);
+		// else if (set_scale == -2)
+		// 	//set_scale = parseFloat(argv[i]);
+		// else if (!strcmp(argv[i],"--xres"))
+		// 	//set_xres = -2;
+		// else if (!strcmp(argv[i],"--yres"))
+		// 	//set_yres = -2;
+		// else if (!strcmp(argv[i],"--dpi"))
+		// 	//set_dpi = -2;
+		// else if (!strcmp(argv[i],"--scale"))
+		// 	//set_scale = -2;
+		// else if (!strcmp(argv[i],"--ipad"))
+		// 	//set_ipad = true;
+		// else if (!strcmp(argv[i],"--portrait"))
+		// 	//portrait = true;
+		// else {
+ 			remain_argv[remain_argc++] = argv[i];
+		//}
 	}
+
+	//remain_argv[remain_argc++] = argv[1];
+
 
 	std::string app_name;
 	std::string app_name_nice;
@@ -417,91 +422,99 @@ int main(int argc, char *argv[]) {
 	NativeGetAppInfo(&app_name, &app_name_nice, &landscape, &version);
 
 	bool joystick_enabled = true;
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
-		fprintf(stderr, "Failed to initialize SDL with joystick support. Retrying without.\n");
-		joystick_enabled = false;
-		if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
-			fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
-			return 1;
-		}
+	// if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
+	// 	fprintf(stderr, "Failed to initialize SDL with joystick support. Retrying without.\n");
+	// 	joystick_enabled = false;
+	// 	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) < 0) {
+	// 		fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
+	// 		return 1;
+	// 	}
+	// }
+
+	if (SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO) < 0) {
+		fprintf(stderr, "Unable to initialize SDL: %s\n", SDL_GetError());
+		return 1;
 	}
+
+	KmsWindow* window = kms_window_create();
+	//joystick_enabled = false;
 
 	// TODO: How do we get this into the GraphicsContext?
-#ifdef USING_EGL
-	if (EGL_Open())
-		return 1;
-#endif
+// #ifdef USING_EGL
+// 	if (EGL_Open())
+// 		return 1;
+// #endif
 
-	// Get the video info before doing anything else, so we don't get skewed resolution results.
-	// TODO: support multiple displays correctly
-	SDL_DisplayMode displayMode;
-	int should_be_zero = SDL_GetCurrentDisplayMode(0, &displayMode);
-	if (should_be_zero != 0) {
-		fprintf(stderr, "Could not get display mode: %s\n", SDL_GetError());
-		return 1;
-	}
-	g_DesktopWidth = displayMode.w;
-	g_DesktopHeight = displayMode.h;
+// 	// Get the video info before doing anything else, so we don't get skewed resolution results.
+// 	// TODO: support multiple displays correctly
+// 	SDL_DisplayMode displayMode;
+// 	int should_be_zero = SDL_GetCurrentDisplayMode(0, &displayMode);
+// 	if (should_be_zero != 0) {
+// 		fprintf(stderr, "Could not get display mode: %s\n", SDL_GetError());
+// 		return 1;
+// 	}
+	g_DesktopWidth = 1280; //displayMode.w;
+	g_DesktopHeight = 720; //displayMode.h;
 
-	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
-	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-	SDL_GL_SetSwapInterval(1);
+// 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+// 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+// 	SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+// 	SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+// 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+// 	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+// 	SDL_GL_SetSwapInterval(1);
 
-	// Force fullscreen if the resolution is too low to run windowed.
-	if (g_DesktopWidth < 480 * 2 && g_DesktopHeight < 272 * 2) {
-		mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-	}
+// 	// Force fullscreen if the resolution is too low to run windowed.
+// 	if (g_DesktopWidth < 480 * 2 && g_DesktopHeight < 272 * 2) {
+// 		mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+// 	}
 
-	// If we're on mobile, don't try for windowed either.
-#if defined(MOBILE_DEVICE)
-	mode |= SDL_WINDOW_FULLSCREEN;
-#elif defined(USING_FBDEV)
-	mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
-#else
-	mode |= SDL_WINDOW_RESIZABLE;
-#endif
+// 	// If we're on mobile, don't try for windowed either.
+// #if defined(MOBILE_DEVICE)
+// 	mode |= SDL_WINDOW_FULLSCREEN;
+// #elif defined(USING_FBDEV)
+// 	mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+// #else
+// 	mode |= SDL_WINDOW_RESIZABLE;
+// #endif
 
-	if (mode & SDL_WINDOW_FULLSCREEN_DESKTOP) {
+// 	if (mode & SDL_WINDOW_FULLSCREEN_DESKTOP) {
 		pixel_xres = g_DesktopWidth;
 		pixel_yres = g_DesktopHeight;
 		g_Config.bFullScreen = true;
-	} else {
-		// set a sensible default resolution (2x)
-		pixel_xres = 480 * 2 * set_scale;
-		pixel_yres = 272 * 2 * set_scale;
-		if (portrait) {
-			std::swap(pixel_xres, pixel_yres);
-		}
-		g_Config.bFullScreen = false;
-	}
+// 	} else {
+// 		// set a sensible default resolution (2x)
+// 		pixel_xres = 480 * 2 * set_scale;
+// 		pixel_yres = 272 * 2 * set_scale;
+// 		if (portrait) {
+// 			std::swap(pixel_xres, pixel_yres);
+// 		}
+// 		g_Config.bFullScreen = false;
+// 	}
 
-	set_dpi = 1.0f / set_dpi;
+// 	set_dpi = 1.0f / set_dpi;
 
-	if (set_ipad) {
-		pixel_xres = 1024;
-		pixel_yres = 768;
-	}
-	if (!landscape) {
-		std::swap(pixel_xres, pixel_yres);
-	}
+// 	if (set_ipad) {
+// 		pixel_xres = 1024;
+// 		pixel_yres = 768;
+// 	}
+// 	if (!landscape) {
+// 		std::swap(pixel_xres, pixel_yres);
+// 	}
 
-	if (set_xres > 0) {
-		pixel_xres = set_xres;
-	}
-	if (set_yres > 0) {
-		pixel_yres = set_yres;
-	}
-	float dpi_scale = 1.0f;
-	if (set_dpi > 0) {
-		dpi_scale = set_dpi;
-	}
+// 	if (set_xres > 0) {
+// 		pixel_xres = set_xres;
+// 	}
+// 	if (set_yres > 0) {
+// 		pixel_yres = set_yres;
+// 	}
+ 	float dpi_scale = 1.0f;
+// 	if (set_dpi > 0) {
+// 		dpi_scale = set_dpi;
+// 	}
 
-	dp_xres = (float)pixel_xres * dpi_scale;
-	dp_yres = (float)pixel_yres * dpi_scale;
+ 	dp_xres = (float)pixel_xres * dpi_scale;
+ 	dp_yres = (float)pixel_yres * dpi_scale;
 
 	// Mac / Linux
 	char path[2048];
@@ -517,12 +530,12 @@ int main(int argc, char *argv[]) {
 
 	NativeInit(remain_argc, (const char **)remain_argv, path, "/tmp", nullptr);
 
-	// Use the setting from the config when initing the window.
-	if (g_Config.bFullScreen)
-		mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
+	// // Use the setting from the config when initing the window.
+	// if (g_Config.bFullScreen)
+	// 	mode |= SDL_WINDOW_FULLSCREEN_DESKTOP;
 
-	int x = SDL_WINDOWPOS_UNDEFINED_DISPLAY(getDisplayNumber());
-	int y = SDL_WINDOWPOS_UNDEFINED;
+	// int x = SDL_WINDOWPOS_UNDEFINED_DISPLAY(getDisplayNumber());
+	// int y = SDL_WINDOWPOS_UNDEFINED;
 
 	pixel_in_dps_x = (float)pixel_xres / dp_xres;
 	pixel_in_dps_y = (float)pixel_yres / dp_yres;
@@ -535,42 +548,42 @@ int main(int argc, char *argv[]) {
 	printf("Virtual pixels: %i x %i\n", dp_xres, dp_yres);
 
 	GraphicsContext *graphicsContext = nullptr;
-	SDL_Window *window = nullptr;
+	SDL_Window *sdlwindow = nullptr;
 
 	std::string error_message;
-	if (g_Config.iGPUBackend == (int)GPUBackend::OPENGL) {
+//	if (g_Config.iGPUBackend == (int)GPUBackend::OPENGL) {
 		SDLGLGraphicsContext *ctx = new SDLGLGraphicsContext();
-		if (ctx->Init(window, x, y, mode, &error_message) != 0) {
+		if (ctx->Init(sdlwindow, 0, 0, 0, &error_message) != 0) {
 			printf("GL init error '%s'\n", error_message.c_str());
 		}
 		graphicsContext = ctx;
-	} else if (g_Config.iGPUBackend == (int)GPUBackend::VULKAN) {
-		SDLVulkanGraphicsContext *ctx = new SDLVulkanGraphicsContext();
-		if (!ctx->Init(window, x, y, mode, &error_message)) {
-			printf("Vulkan init error '%s' - falling back to GL\n", error_message.c_str());
-			g_Config.iGPUBackend = (int)GPUBackend::OPENGL;
-			SetGPUBackend((GPUBackend)g_Config.iGPUBackend);
-			delete ctx;
-			SDLGLGraphicsContext *glctx = new SDLGLGraphicsContext();
-			glctx->Init(window, x, y, mode, &error_message);
-			graphicsContext = glctx;
-		} else {
-			graphicsContext = ctx;
-		}
-	}
+	// } else if (g_Config.iGPUBackend == (int)GPUBackend::VULKAN) {
+	// 	SDLVulkanGraphicsContext *ctx = new SDLVulkanGraphicsContext();
+	// 	if (!ctx->Init(window, x, y, mode, &error_message)) {
+	// 		printf("Vulkan init error '%s' - falling back to GL\n", error_message.c_str());
+	// 		g_Config.iGPUBackend = (int)GPUBackend::OPENGL;
+	// 		SetGPUBackend((GPUBackend)g_Config.iGPUBackend);
+	// 		delete ctx;
+	// 		SDLGLGraphicsContext *glctx = new SDLGLGraphicsContext();
+	// 		glctx->Init(window, x, y, mode, &error_message);
+	// 		graphicsContext = glctx;
+	// 	} else {
+	// 		graphicsContext = ctx;
+	// 	}
+	// }
 
 	bool useEmuThread = g_Config.iGPUBackend == (int)GPUBackend::OPENGL;
 
-	SDL_SetWindowTitle(window, (app_name_nice + " " + PPSSPP_GIT_VERSION).c_str());
+	//SDL_SetWindowTitle(window, (app_name_nice + " " + PPSSPP_GIT_VERSION).c_str());
 
 	// Since we render from the main thread, there's nothing done here, but we call it to avoid confusion.
 	if (!graphicsContext->InitFromRenderThread(&error_message)) {
 		printf("Init from thread error: '%s'\n", error_message.c_str());
 	}
 
-#ifdef MOBILE_DEVICE
-	SDL_ShowCursor(SDL_DISABLE);
-#endif
+// #ifdef MOBILE_DEVICE
+// 	SDL_ShowCursor(SDL_DISABLE);
+// #endif
 
 	if (!useEmuThread) {
 		NativeInitGraphics(graphicsContext);
@@ -621,245 +634,245 @@ int main(int argc, char *argv[]) {
 	bool windowHidden = false;
 	while (true) {
 		double startTime = time_now_d();
-		SDL_Event event, touchEvent;
-		while (SDL_PollEvent(&event)) {
-			float mx = event.motion.x * g_dpi_scale_x;
-			float my = event.motion.y * g_dpi_scale_y;
+// 		SDL_Event event, touchEvent;
+// 		while (SDL_PollEvent(&event)) {
+// 			float mx = event.motion.x * g_dpi_scale_x;
+// 			float my = event.motion.y * g_dpi_scale_y;
 
-			switch (event.type) {
-			case SDL_QUIT:
-				g_QuitRequested = 1;
-				break;
+// 			switch (event.type) {
+// 			case SDL_QUIT:
+// 				g_QuitRequested = 1;
+// 				break;
 
-#if !defined(MOBILE_DEVICE)
-			case SDL_WINDOWEVENT:
-				switch (event.window.event) {
-				case SDL_WINDOWEVENT_SIZE_CHANGED:  // better than RESIZED, more general
-				{
-					Uint32 window_flags = SDL_GetWindowFlags(window);
-					bool fullscreen = (window_flags & SDL_WINDOW_FULLSCREEN);
+// #if !defined(MOBILE_DEVICE)
+// 			case SDL_WINDOWEVENT:
+// 				switch (event.window.event) {
+// 				case SDL_WINDOWEVENT_SIZE_CHANGED:  // better than RESIZED, more general
+// 				{
+// 					Uint32 window_flags = SDL_GetWindowFlags(window);
+// 					bool fullscreen = (window_flags & SDL_WINDOW_FULLSCREEN);
 
-					if (UpdateScreenScale(event.window.data1, event.window.data2)) {
-						NativeMessageReceived("gpu_resized", "");
-					}
+// 					if (UpdateScreenScale(event.window.data1, event.window.data2)) {
+// 						NativeMessageReceived("gpu_resized", "");
+// 					}
 
-					// Set variable here in case fullscreen was toggled by hotkey
-					g_Config.bFullScreen = fullscreen;
+// 					// Set variable here in case fullscreen was toggled by hotkey
+// 					g_Config.bFullScreen = fullscreen;
 
-					// Hide/Show cursor correctly toggling fullscreen
-					if (lastUIState == UISTATE_INGAME && fullscreen && !g_Config.bShowTouchControls) {
-						SDL_ShowCursor(SDL_DISABLE);
-					} else if (lastUIState != UISTATE_INGAME || !fullscreen) {
-						SDL_ShowCursor(SDL_ENABLE);
-					}
-					break;
-				}
+// 					// Hide/Show cursor correctly toggling fullscreen
+// 					if (lastUIState == UISTATE_INGAME && fullscreen && !g_Config.bShowTouchControls) {
+// 						SDL_ShowCursor(SDL_DISABLE);
+// 					} else if (lastUIState != UISTATE_INGAME || !fullscreen) {
+// 						SDL_ShowCursor(SDL_ENABLE);
+// 					}
+// 					break;
+// 				}
 
-				case SDL_WINDOWEVENT_MINIMIZED:
-				case SDL_WINDOWEVENT_HIDDEN:
-					windowHidden = true;
-					Core_NotifyWindowHidden(windowHidden);
-					break;
-				case SDL_WINDOWEVENT_EXPOSED:
-				case SDL_WINDOWEVENT_SHOWN:
-				case SDL_WINDOWEVENT_MAXIMIZED:
-				case SDL_WINDOWEVENT_RESTORED:
-					windowHidden = false;
-					Core_NotifyWindowHidden(windowHidden);
-					break;
+// 				case SDL_WINDOWEVENT_MINIMIZED:
+// 				case SDL_WINDOWEVENT_HIDDEN:
+// 					windowHidden = true;
+// 					Core_NotifyWindowHidden(windowHidden);
+// 					break;
+// 				case SDL_WINDOWEVENT_EXPOSED:
+// 				case SDL_WINDOWEVENT_SHOWN:
+// 				case SDL_WINDOWEVENT_MAXIMIZED:
+// 				case SDL_WINDOWEVENT_RESTORED:
+// 					windowHidden = false;
+// 					Core_NotifyWindowHidden(windowHidden);
+// 					break;
 
-				default:
-					break;
-				}
-				break;
-#endif
-			case SDL_KEYDOWN:
-				{
-					if (event.key.repeat > 0) { break;}
-					int k = event.key.keysym.sym;
-					KeyInput key;
-					key.flags = KEY_DOWN;
-					auto mapped = KeyMapRawSDLtoNative.find(k);
-					if (mapped == KeyMapRawSDLtoNative.end() || mapped->second == NKCODE_UNKNOWN) {
-						break;
-					}
-					key.keyCode = mapped->second;
-					key.deviceId = DEVICE_ID_KEYBOARD;
-					NativeKey(key);
-					break;
-				}
-			case SDL_KEYUP:
-				{
-					if (event.key.repeat > 0) { break;}
-					int k = event.key.keysym.sym;
-					KeyInput key;
-					key.flags = KEY_UP;
-					auto mapped = KeyMapRawSDLtoNative.find(k);
-					if (mapped == KeyMapRawSDLtoNative.end() || mapped->second == NKCODE_UNKNOWN) {
-						break;
-					}
-					key.keyCode = mapped->second;
-					key.deviceId = DEVICE_ID_KEYBOARD;
-					NativeKey(key);
-					break;
-				}
-			case SDL_TEXTINPUT:
-				{
-					int pos = 0;
-					int c = u8_nextchar(event.text.text, &pos);
-					KeyInput key;
-					key.flags = KEY_CHAR;
-					key.keyCode = c;
-					key.deviceId = DEVICE_ID_KEYBOARD;
-					NativeKey(key);
-					break;
-				}
-// This behavior doesn't feel right on a macbook with a touchpad.
-#if !PPSSPP_PLATFORM(MAC)
-			case SDL_FINGERMOTION:
-				{
-					SDL_GetWindowSize(window, &w, &h);
-					touchEvent.type = SDL_MOUSEMOTION;
-					touchEvent.motion.type = SDL_MOUSEMOTION;
-					touchEvent.motion.timestamp = event.tfinger.timestamp;
-					touchEvent.motion.windowID = SDL_GetWindowID(window);
-					touchEvent.motion.which = SDL_TOUCH_MOUSEID;
-					touchEvent.motion.state = SDL_GetMouseState(NULL, NULL);
-					touchEvent.motion.x = event.tfinger.x * w;
-					touchEvent.motion.y = event.tfinger.y * h;
+// 				default:
+// 					break;
+// 				}
+// 				break;
+// #endif
+// 			case SDL_KEYDOWN:
+// 				{
+// 					if (event.key.repeat > 0) { break;}
+// 					int k = event.key.keysym.sym;
+// 					KeyInput key;
+// 					key.flags = KEY_DOWN;
+// 					auto mapped = KeyMapRawSDLtoNative.find(k);
+// 					if (mapped == KeyMapRawSDLtoNative.end() || mapped->second == NKCODE_UNKNOWN) {
+// 						break;
+// 					}
+// 					key.keyCode = mapped->second;
+// 					key.deviceId = DEVICE_ID_KEYBOARD;
+// 					NativeKey(key);
+// 					break;
+// 				}
+// 			case SDL_KEYUP:
+// 				{
+// 					if (event.key.repeat > 0) { break;}
+// 					int k = event.key.keysym.sym;
+// 					KeyInput key;
+// 					key.flags = KEY_UP;
+// 					auto mapped = KeyMapRawSDLtoNative.find(k);
+// 					if (mapped == KeyMapRawSDLtoNative.end() || mapped->second == NKCODE_UNKNOWN) {
+// 						break;
+// 					}
+// 					key.keyCode = mapped->second;
+// 					key.deviceId = DEVICE_ID_KEYBOARD;
+// 					NativeKey(key);
+// 					break;
+// 				}
+// 			case SDL_TEXTINPUT:
+// 				{
+// 					int pos = 0;
+// 					int c = u8_nextchar(event.text.text, &pos);
+// 					KeyInput key;
+// 					key.flags = KEY_CHAR;
+// 					key.keyCode = c;
+// 					key.deviceId = DEVICE_ID_KEYBOARD;
+// 					NativeKey(key);
+// 					break;
+// 				}
+// // This behavior doesn't feel right on a macbook with a touchpad.
+// #if !PPSSPP_PLATFORM(MAC)
+// 			case SDL_FINGERMOTION:
+// 				{
+// 					SDL_GetWindowSize(window, &w, &h);
+// 					touchEvent.type = SDL_MOUSEMOTION;
+// 					touchEvent.motion.type = SDL_MOUSEMOTION;
+// 					touchEvent.motion.timestamp = event.tfinger.timestamp;
+// 					touchEvent.motion.windowID = SDL_GetWindowID(window);
+// 					touchEvent.motion.which = SDL_TOUCH_MOUSEID;
+// 					touchEvent.motion.state = SDL_GetMouseState(NULL, NULL);
+// 					touchEvent.motion.x = event.tfinger.x * w;
+// 					touchEvent.motion.y = event.tfinger.y * h;
 
-					SDL_WarpMouseInWindow(window, event.tfinger.x * w, event.tfinger.y * h);
+// 					SDL_WarpMouseInWindow(window, event.tfinger.x * w, event.tfinger.y * h);
 
-					SDL_PushEvent(&touchEvent);
-					break;
-				}
-			case SDL_FINGERDOWN:
-				{
-					SDL_GetWindowSize(window, &w, &h);
-					touchEvent.type = SDL_MOUSEBUTTONDOWN;
-					touchEvent.button.type = SDL_MOUSEBUTTONDOWN;
-					touchEvent.button.timestamp = SDL_GetTicks();
-					touchEvent.button.windowID = SDL_GetWindowID(window);
-					touchEvent.button.which = SDL_TOUCH_MOUSEID;
-					touchEvent.button.button = SDL_BUTTON_LEFT;
-					touchEvent.button.state = SDL_PRESSED;
-					touchEvent.button.clicks = 1;
-					touchEvent.button.x = event.tfinger.x * w;
-					touchEvent.button.y = event.tfinger.y * h;
+// 					SDL_PushEvent(&touchEvent);
+// 					break;
+// 				}
+// 			case SDL_FINGERDOWN:
+// 				{
+// 					SDL_GetWindowSize(window, &w, &h);
+// 					touchEvent.type = SDL_MOUSEBUTTONDOWN;
+// 					touchEvent.button.type = SDL_MOUSEBUTTONDOWN;
+// 					touchEvent.button.timestamp = SDL_GetTicks();
+// 					touchEvent.button.windowID = SDL_GetWindowID(window);
+// 					touchEvent.button.which = SDL_TOUCH_MOUSEID;
+// 					touchEvent.button.button = SDL_BUTTON_LEFT;
+// 					touchEvent.button.state = SDL_PRESSED;
+// 					touchEvent.button.clicks = 1;
+// 					touchEvent.button.x = event.tfinger.x * w;
+// 					touchEvent.button.y = event.tfinger.y * h;
 
-					touchEvent.motion.type = SDL_MOUSEMOTION;
-					touchEvent.motion.timestamp = SDL_GetTicks();
-					touchEvent.motion.windowID = SDL_GetWindowID(window);
-					touchEvent.motion.which = SDL_TOUCH_MOUSEID;
-					touchEvent.motion.x = event.tfinger.x * w;
-					touchEvent.motion.y = event.tfinger.y * h;
-					// Any real mouse cursor should also move
-					SDL_WarpMouseInWindow(window, event.tfinger.x * w, event.tfinger.y * h);
-					// First finger down event also has to be a motion to that position
-					SDL_PushEvent(&touchEvent);
-					touchEvent.motion.type = SDL_MOUSEBUTTONDOWN;
-					// Now we push the mouse button event
-					SDL_PushEvent(&touchEvent);
-					break;
-				}
-			case SDL_FINGERUP:
-				{
-					SDL_GetWindowSize(window, &w, &h);
-					touchEvent.type = SDL_MOUSEBUTTONUP;
-					touchEvent.button.type = SDL_MOUSEBUTTONUP;
-					touchEvent.button.timestamp = SDL_GetTicks();
-					touchEvent.button.windowID = SDL_GetWindowID(window);
-					touchEvent.button.which = SDL_TOUCH_MOUSEID;
-					touchEvent.button.button = SDL_BUTTON_LEFT;
-					touchEvent.button.state = SDL_RELEASED;
-					touchEvent.button.clicks = 1;
-					touchEvent.button.x = event.tfinger.x * w;
-					touchEvent.button.y = event.tfinger.y * h;
-					SDL_PushEvent(&touchEvent);
-					break;
-				}
-#endif
-			case SDL_MOUSEBUTTONDOWN:
-				switch (event.button.button) {
-				case SDL_BUTTON_LEFT:
-					{
-						mouseDown = true;
-						TouchInput input;
-						input.x = mx;
-						input.y = my;
-						input.flags = TOUCH_DOWN | TOUCH_MOUSE;
-						input.id = 0;
-						NativeTouch(input);
-						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_1, KEY_DOWN);
-						NativeKey(key);
-					}
-					break;
-				case SDL_BUTTON_RIGHT:
-					{
-						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_2, KEY_DOWN);
-						NativeKey(key);
-					}
-					break;
-				}
-				break;
-			case SDL_MOUSEWHEEL:
-				{
-					KeyInput key;
-					key.deviceId = DEVICE_ID_MOUSE;
-					if (event.wheel.y > 0) {
-						key.keyCode = NKCODE_EXT_MOUSEWHEEL_UP;
-					} else {
-						key.keyCode = NKCODE_EXT_MOUSEWHEEL_DOWN;
-					}
-					key.flags = KEY_DOWN;
-					NativeKey(key);
+// 					touchEvent.motion.type = SDL_MOUSEMOTION;
+// 					touchEvent.motion.timestamp = SDL_GetTicks();
+// 					touchEvent.motion.windowID = SDL_GetWindowID(window);
+// 					touchEvent.motion.which = SDL_TOUCH_MOUSEID;
+// 					touchEvent.motion.x = event.tfinger.x * w;
+// 					touchEvent.motion.y = event.tfinger.y * h;
+// 					// Any real mouse cursor should also move
+// 					SDL_WarpMouseInWindow(window, event.tfinger.x * w, event.tfinger.y * h);
+// 					// First finger down event also has to be a motion to that position
+// 					SDL_PushEvent(&touchEvent);
+// 					touchEvent.motion.type = SDL_MOUSEBUTTONDOWN;
+// 					// Now we push the mouse button event
+// 					SDL_PushEvent(&touchEvent);
+// 					break;
+// 				}
+// 			case SDL_FINGERUP:
+// 				{
+// 					SDL_GetWindowSize(window, &w, &h);
+// 					touchEvent.type = SDL_MOUSEBUTTONUP;
+// 					touchEvent.button.type = SDL_MOUSEBUTTONUP;
+// 					touchEvent.button.timestamp = SDL_GetTicks();
+// 					touchEvent.button.windowID = SDL_GetWindowID(window);
+// 					touchEvent.button.which = SDL_TOUCH_MOUSEID;
+// 					touchEvent.button.button = SDL_BUTTON_LEFT;
+// 					touchEvent.button.state = SDL_RELEASED;
+// 					touchEvent.button.clicks = 1;
+// 					touchEvent.button.x = event.tfinger.x * w;
+// 					touchEvent.button.y = event.tfinger.y * h;
+// 					SDL_PushEvent(&touchEvent);
+// 					break;
+// 				}
+// #endif
+// 			case SDL_MOUSEBUTTONDOWN:
+// 				switch (event.button.button) {
+// 				case SDL_BUTTON_LEFT:
+// 					{
+// 						mouseDown = true;
+// 						TouchInput input;
+// 						input.x = mx;
+// 						input.y = my;
+// 						input.flags = TOUCH_DOWN | TOUCH_MOUSE;
+// 						input.id = 0;
+// 						NativeTouch(input);
+// 						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_1, KEY_DOWN);
+// 						NativeKey(key);
+// 					}
+// 					break;
+// 				case SDL_BUTTON_RIGHT:
+// 					{
+// 						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_2, KEY_DOWN);
+// 						NativeKey(key);
+// 					}
+// 					break;
+// 				}
+// 				break;
+// 			case SDL_MOUSEWHEEL:
+// 				{
+// 					KeyInput key;
+// 					key.deviceId = DEVICE_ID_MOUSE;
+// 					if (event.wheel.y > 0) {
+// 						key.keyCode = NKCODE_EXT_MOUSEWHEEL_UP;
+// 					} else {
+// 						key.keyCode = NKCODE_EXT_MOUSEWHEEL_DOWN;
+// 					}
+// 					key.flags = KEY_DOWN;
+// 					NativeKey(key);
 
-					// SDL2 doesn't consider the mousewheel a button anymore
-					// so let's send the KEY_UP right away.
-					// Maybe KEY_UP alone will suffice?
-					key.flags = KEY_UP;
-					NativeKey(key);
-				}
-			case SDL_MOUSEMOTION:
-				if (mouseDown) {
-					TouchInput input;
-					input.x = mx;
-					input.y = my;
-					input.flags = TOUCH_MOVE | TOUCH_MOUSE;
-					input.id = 0;
-					NativeTouch(input);
-				}
-				break;
-			case SDL_MOUSEBUTTONUP:
-				switch (event.button.button) {
-				case SDL_BUTTON_LEFT:
-					{
-						mouseDown = false;
-						TouchInput input;
-						input.x = mx;
-						input.y = my;
-						input.flags = TOUCH_UP | TOUCH_MOUSE;
-						input.id = 0;
-						NativeTouch(input);
-						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_1, KEY_UP);
-						NativeKey(key);
-					}
-					break;
-				case SDL_BUTTON_RIGHT:
-					{
-						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_2, KEY_UP);
-						NativeKey(key);
-					}
-					break;
-				}
-				break;
-			default:
+// 					// SDL2 doesn't consider the mousewheel a button anymore
+// 					// so let's send the KEY_UP right away.
+// 					// Maybe KEY_UP alone will suffice?
+// 					key.flags = KEY_UP;
+// 					NativeKey(key);
+// 				}
+// 			case SDL_MOUSEMOTION:
+// 				if (mouseDown) {
+// 					TouchInput input;
+// 					input.x = mx;
+// 					input.y = my;
+// 					input.flags = TOUCH_MOVE | TOUCH_MOUSE;
+// 					input.id = 0;
+// 					NativeTouch(input);
+// 				}
+// 				break;
+// 			case SDL_MOUSEBUTTONUP:
+// 				switch (event.button.button) {
+// 				case SDL_BUTTON_LEFT:
+// 					{
+// 						mouseDown = false;
+// 						TouchInput input;
+// 						input.x = mx;
+// 						input.y = my;
+// 						input.flags = TOUCH_UP | TOUCH_MOUSE;
+// 						input.id = 0;
+// 						NativeTouch(input);
+// 						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_1, KEY_UP);
+// 						NativeKey(key);
+// 					}
+// 					break;
+// 				case SDL_BUTTON_RIGHT:
+// 					{
+// 						KeyInput key(DEVICE_ID_MOUSE, NKCODE_EXT_MOUSEBUTTON_2, KEY_UP);
+// 						NativeKey(key);
+// 					}
+// 					break;
+// 				}
+// 				break;
+// 			default:
 				if (joystick) {
 					joystick->ProcessInput(event);
 				}
-				break;
-			}
-		}
+// 				break;
+// 			}
+// 		}
 		if (g_QuitRequested)
 			break;
 		const uint8_t *keys = SDL_GetKeyboardState(NULL);
@@ -868,15 +881,15 @@ int main(int argc, char *argv[]) {
 		}
 		if (g_QuitRequested)
 			break;
-#if !defined(MOBILE_DEVICE)
-		if (lastUIState != GetUIState()) {
-			lastUIState = GetUIState();
-			if (lastUIState == UISTATE_INGAME && g_Config.bFullScreen && !g_Config.bShowTouchControls)
-				SDL_ShowCursor(SDL_DISABLE);
-			if (lastUIState != UISTATE_INGAME || !g_Config.bFullScreen)
-				SDL_ShowCursor(SDL_ENABLE);
-		}
-#endif
+// #if !defined(MOBILE_DEVICE)
+// 		if (lastUIState != GetUIState()) {
+// 			lastUIState = GetUIState();
+// 			if (lastUIState == UISTATE_INGAME && g_Config.bFullScreen && !g_Config.bShowTouchControls)
+// 				SDL_ShowCursor(SDL_DISABLE);
+// 			if (lastUIState != UISTATE_INGAME || !g_Config.bFullScreen)
+// 				SDL_ShowCursor(SDL_ENABLE);
+// 		}
+// #endif
 
 		if (framecount % 60 == 0) {
 			// glsl_refresh(); // auto-reloads modified GLSL shaders once per second.
@@ -889,9 +902,10 @@ int main(int argc, char *argv[]) {
 		}
 
 
-		graphicsContext->SwapBuffers();
+		//graphicsContext->SwapBuffers();
+		kms_window_swap_buffers2(window);
 
-		ToggleFullScreenIfFlagSet(window);
+		//ToggleFullScreenIfFlagSet(window);
 
 		// Simple throttling to not burn the GPU in the menu.
 		time_update();
@@ -931,9 +945,9 @@ int main(int argc, char *argv[]) {
 	SDL_PauseAudio(1);
 	SDL_CloseAudio();
 	SDL_Quit();
-#if PPSSPP_PLATFORM(RPI)
-	bcm_host_deinit();
-#endif
+// #if PPSSPP_PLATFORM(RPI)
+// 	bcm_host_deinit();
+// #endif
 
 	glslang::FinalizeProcess();
 	ILOG("Leaving main");

@@ -2,6 +2,11 @@
 cmake_minimum_required(VERSION 3.6)
 project(PPSSPP)
 
+# SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ldrm")
+# SET(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -ldrm")
+
+find_package(Libdrm)
+
 #This is supposed to work but doesn't!
 if(NOT ANDROID)
 	set(CMAKE_CXX_STANDARD 11)
@@ -70,6 +75,9 @@ if(NOT ANDROID AND NOT IOS)
 		set(USING_EGL ON)
 	endif()
 endif()
+
+set(USING_EGL ON)
+set(USING_GLES2 ON)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 	set(LINUX ON)
@@ -487,6 +495,16 @@ add_library(rg_etc1 STATIC
 )
 include_directories(ext/native/ext/rg_etc1)
 
+
+include_directories(/usr/include/drm)
+# /usr/lib/aarch64-linux-gnu/
+#add_library(libdrm.so SHARED IMPORTED GLOBAL)
+#target_link_libraries(Common libdrm.so)
+# SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ldrm")
+#add_library(Libdrm SHARED IMPORTED)
+#target_link_libraries(Common Libdrm::Libdrm)
+
+
 if(USE_FFMPEG)
 	if(NOT FFMPEG_DIR)
 		if(NOT USE_SYSTEM_FFMPEG)
@@ -822,6 +840,8 @@ elseif(TARGET SDL2::SDL2)
 		SDL/SDLMain.cpp
 		SDL/SDLGLGraphicsContext.cpp
 		SDL/SDLVulkanGraphicsContext.cpp
+		SDL/odroid.cpp
+		SDL/kms_window.cpp
 	)
 	set(nativeExtraLibs ${nativeExtraLibs} SDL2::SDL2)
 	if(APPLE)
@@ -831,6 +851,7 @@ elseif(TARGET SDL2::SDL2)
 		set(nativeExtraLibs ${nativeExtraLibs} pthread)
 	endif()
 	set(TargetBin PPSSPPSDL)
+	set(nativeExtraLibs ${nativeExtraLibs} drm)
 else()
 	message(FATAL_ERROR "Could not find SDL2. Failing.")
 endif()

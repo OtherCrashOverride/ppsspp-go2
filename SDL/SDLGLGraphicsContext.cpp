@@ -172,65 +172,65 @@ EGLConfig EGL_FindConfig(int *contextVersion) {
 }
 
 int8_t EGL_Init(SDL_Window *window) {
-	int contextVersion = 0;
-	EGLConfig eglConfig = EGL_FindConfig(&contextVersion);
-	if (!eglConfig) {
-		EGL_ERROR("Unable to find a usable EGL config.", true);
-		return 1;
-	}
+// 	int contextVersion = 0;
+// 	EGLConfig eglConfig = EGL_FindConfig(&contextVersion);
+// 	if (!eglConfig) {
+// 		EGL_ERROR("Unable to find a usable EGL config.", true);
+// 		return 1;
+// 	}
 
-	EGLint contextAttributes[] = {
-		EGL_CONTEXT_CLIENT_VERSION, contextVersion,
-		EGL_NONE,
-	};
-	if (contextVersion == 0) {
-		contextAttributes[0] = EGL_NONE;
-	}
+// 	EGLint contextAttributes[] = {
+// 		EGL_CONTEXT_CLIENT_VERSION, contextVersion,
+// 		EGL_NONE,
+// 	};
+// 	if (contextVersion == 0) {
+// 		contextAttributes[0] = EGL_NONE;
+// 	}
 
-	g_eglContext = eglCreateContext(g_eglDisplay, eglConfig, nullptr, contextAttributes);
-	if (g_eglContext == EGL_NO_CONTEXT) {
-		EGL_ERROR("Unable to create GLES context!", true);
-		return 1;
-	}
+// 	g_eglContext = eglCreateContext(g_eglDisplay, eglConfig, nullptr, contextAttributes);
+// 	if (g_eglContext == EGL_NO_CONTEXT) {
+// 		EGL_ERROR("Unable to create GLES context!", true);
+// 		return 1;
+// 	}
 
-#if !defined(USING_FBDEV) && !defined(__APPLE__)
-	// Get the SDL window handle
-	SDL_SysWMinfo sysInfo; //Will hold our Window information
-	SDL_VERSION(&sysInfo.version); //Set SDL version
-	SDL_GetWindowWMInfo(window, &sysInfo);
-	g_Window = (NativeWindowType)sysInfo.info.x11.window;
-#else
-	g_Window = (NativeWindowType)NULL;
-#endif
-	g_eglSurface = eglCreateWindowSurface(g_eglDisplay, eglConfig, g_Window, nullptr);
-	if (g_eglSurface == EGL_NO_SURFACE) {
-		EGL_ERROR("Unable to create EGL surface!", true);
-		return 1;
-	}
+// #if !defined(USING_FBDEV) && !defined(__APPLE__)
+// 	// Get the SDL window handle
+// 	SDL_SysWMinfo sysInfo; //Will hold our Window information
+// 	SDL_VERSION(&sysInfo.version); //Set SDL version
+// 	SDL_GetWindowWMInfo(window, &sysInfo);
+// 	g_Window = (NativeWindowType)sysInfo.info.x11.window;
+// #else
+// 	g_Window = (NativeWindowType)NULL;
+// #endif
+// 	g_eglSurface = eglCreateWindowSurface(g_eglDisplay, eglConfig, g_Window, nullptr);
+// 	if (g_eglSurface == EGL_NO_SURFACE) {
+// 		EGL_ERROR("Unable to create EGL surface!", true);
+// 		return 1;
+// 	}
 
-	if (eglMakeCurrent(g_eglDisplay, g_eglSurface, g_eglSurface, g_eglContext) != EGL_TRUE) {
-		EGL_ERROR("Unable to make GLES context current.", true);
-		return 1;
-	}
+// 	if (eglMakeCurrent(g_eglDisplay, g_eglSurface, g_eglSurface, g_eglContext) != EGL_TRUE) {
+// 		EGL_ERROR("Unable to make GLES context current.", true);
+// 		return 1;
+// 	}
 
 	return 0;
 }
 
 void EGL_Close() {
-	if (g_eglDisplay != NULL) {
-		eglMakeCurrent(g_eglDisplay, NULL, NULL, EGL_NO_CONTEXT);
-		if (g_eglContext != NULL) {
-			eglDestroyContext(g_eglDisplay, g_eglContext);
-		}
-		if (g_eglSurface != NULL) {
-			eglDestroySurface(g_eglDisplay, g_eglSurface);
-		}
-		eglTerminate(g_eglDisplay);
-		g_eglDisplay = NULL;
-	}
+	// if (g_eglDisplay != NULL) {
+	// 	eglMakeCurrent(g_eglDisplay, NULL, NULL, EGL_NO_CONTEXT);
+	// 	if (g_eglContext != NULL) {
+	// 		eglDestroyContext(g_eglDisplay, g_eglContext);
+	// 	}
+	// 	if (g_eglSurface != NULL) {
+	// 		eglDestroySurface(g_eglDisplay, g_eglSurface);
+	// 	}
+	// 	eglTerminate(g_eglDisplay);
+	// 	g_eglDisplay = NULL;
+	// }
 	if (g_Display != NULL) {
 #if !defined(USING_FBDEV)
-		XCloseDisplay(g_Display);
+		//XCloseDisplay(g_Display);
 #endif
 		g_Display = NULL;
 	}
@@ -242,111 +242,111 @@ void EGL_Close() {
 
 // Returns 0 on success.
 int SDLGLGraphicsContext::Init(SDL_Window *&window, int x, int y, int mode, std::string *error_message) {
-	struct GLVersionPair {
-		int major;
-		int minor;
-	};
-	GLVersionPair attemptVersions[] = {
-#ifdef USING_GLES2
-		{3, 2}, {3, 1}, {3, 0}, {2, 0},
-#else
-		{4, 6}, {4, 5}, {4, 4}, {4, 3}, {4, 2}, {4, 1}, {4, 0},
-		{3, 3}, {3, 2}, {3, 1}, {3, 0},
-#endif
-	};
+// 	struct GLVersionPair {
+// 		int major;
+// 		int minor;
+// 	};
+// 	GLVersionPair attemptVersions[] = {
+// #ifdef USING_GLES2
+// 		{3, 2}, {3, 1}, {3, 0}, {2, 0},
+// #else
+// 		{4, 6}, {4, 5}, {4, 4}, {4, 3}, {4, 2}, {4, 1}, {4, 0},
+// 		{3, 3}, {3, 2}, {3, 1}, {3, 0},
+// #endif
+// 	};
 
-	// We start hidden because we have to try several windows.
-	// On Mac, full screen animates so each attempt is slow.
-	mode |= SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
+// 	// We start hidden because we have to try several windows.
+// 	// On Mac, full screen animates so each attempt is slow.
+// 	mode |= SDL_WINDOW_OPENGL | SDL_WINDOW_HIDDEN;
 
-	SDL_GLContext glContext = nullptr;
-	for (size_t i = 0; i < ARRAY_SIZE(attemptVersions); ++i) {
-		const auto &ver = attemptVersions[i];
-		// Make sure to request a somewhat modern GL context at least - the
-		// latest supported by MacOS X (really, really sad...)
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, ver.major);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, ver.minor);
-#ifdef USING_GLES2
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
-		SetGLCoreContext(false);
-#else
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-		SetGLCoreContext(true);
-#endif
+// 	SDL_GLContext glContext = nullptr;
+// 	for (size_t i = 0; i < ARRAY_SIZE(attemptVersions); ++i) {
+// 		const auto &ver = attemptVersions[i];
+// 		// Make sure to request a somewhat modern GL context at least - the
+// 		// latest supported by MacOS X (really, really sad...)
+// 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, ver.major);
+// 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, ver.minor);
+// #ifdef USING_GLES2
+// 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+// 		SetGLCoreContext(false);
+// #else
+// 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+// 		SetGLCoreContext(true);
+// #endif
 
-		window = SDL_CreateWindow("PPSSPP", x,y, pixel_xres, pixel_yres, mode);
-		if (!window) {
-			// Definitely don't shutdown here: we'll keep trying more GL versions.
-			fprintf(stderr, "SDL_CreateWindow failed for GL %d.%d: %s\n", ver.major, ver.minor, SDL_GetError());
-			// Skip the DestroyWindow.
-			continue;
-		}
+// 		window = SDL_CreateWindow("PPSSPP", x,y, pixel_xres, pixel_yres, mode);
+// 		if (!window) {
+// 			// Definitely don't shutdown here: we'll keep trying more GL versions.
+// 			fprintf(stderr, "SDL_CreateWindow failed for GL %d.%d: %s\n", ver.major, ver.minor, SDL_GetError());
+// 			// Skip the DestroyWindow.
+// 			continue;
+// 		}
 
-		glContext = SDL_GL_CreateContext(window);
-		if (glContext != nullptr) {
-			// Victory, got one.
-			break;
-		}
+// 		glContext = SDL_GL_CreateContext(window);
+// 		if (glContext != nullptr) {
+// 			// Victory, got one.
+// 			break;
+// 		}
 
-		// Let's keep trying.  To be safe, destroy the window - docs say needed to change profile.
-		// in practice, it doesn't seem to matter, but maybe it differs by platform.
-		SDL_DestroyWindow(window);
-	}
+// 		// Let's keep trying.  To be safe, destroy the window - docs say needed to change profile.
+// 		// in practice, it doesn't seem to matter, but maybe it differs by platform.
+// 		SDL_DestroyWindow(window);
+// 	}
 
-	if (glContext == nullptr) {
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 0);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 0);
-		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
-		SetGLCoreContext(false);
+// 	if (glContext == nullptr) {
+// 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, 0);
+// 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 0);
+// 		SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+// 		SetGLCoreContext(false);
 
-		window = SDL_CreateWindow("PPSSPP", x,y, pixel_xres, pixel_yres, mode);
-		if (window == nullptr) {
-			NativeShutdown();
-			fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
-			SDL_Quit();
-			return 2;
-		}
+// 		window = SDL_CreateWindow("PPSSPP", x,y, pixel_xres, pixel_yres, mode);
+// 		if (window == nullptr) {
+// 			NativeShutdown();
+// 			fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+// 			SDL_Quit();
+// 			return 2;
+// 		}
 
-		glContext = SDL_GL_CreateContext(window);
-		if (glContext == nullptr) {
-			NativeShutdown();
-			fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
-			SDL_Quit();
-			return 2;
-		}
-	}
+// 		glContext = SDL_GL_CreateContext(window);
+// 		if (glContext == nullptr) {
+// 			NativeShutdown();
+// 			fprintf(stderr, "SDL_GL_CreateContext failed: %s\n", SDL_GetError());
+// 			SDL_Quit();
+// 			return 2;
+// 		}
+// 	}
 
-	// At this point, we have a window that we can show finally.
-	SDL_ShowWindow(window);
+// 	// At this point, we have a window that we can show finally.
+// 	SDL_ShowWindow(window);
 
-#ifdef USING_EGL
-	if (EGL_Init(window) != 0) {
-		printf("EGL_Init() failed\n");
-		return 1;
-	}
-#endif
+// #ifdef USING_EGL
+// 	if (EGL_Init(window) != 0) {
+// 		printf("EGL_Init() failed\n");
+// 		return 1;
+// 	}
+// #endif
 
-#ifndef USING_GLES2
-	// Some core profile drivers elide certain extensions from GL_EXTENSIONS/etc.
-	// glewExperimental allows us to force GLEW to search for the pointers anyway.
-	if (gl_extensions.IsCoreContext) {
-		glewExperimental = true;
-	}
-	if (GLEW_OK != glewInit()) {
-		printf("Failed to initialize glew!\n");
-		return 1;
-	}
-	// Unfortunately, glew will generate an invalid enum error, ignore.
-	if (gl_extensions.IsCoreContext)
-		glGetError();
+// #ifndef USING_GLES2
+// 	// Some core profile drivers elide certain extensions from GL_EXTENSIONS/etc.
+// 	// glewExperimental allows us to force GLEW to search for the pointers anyway.
+// 	if (gl_extensions.IsCoreContext) {
+// 		glewExperimental = true;
+// 	}
+// 	if (GLEW_OK != glewInit()) {
+// 		printf("Failed to initialize glew!\n");
+// 		return 1;
+// 	}
+// 	// Unfortunately, glew will generate an invalid enum error, ignore.
+// 	if (gl_extensions.IsCoreContext)
+// 		glGetError();
 
-	if (GLEW_VERSION_2_0) {
-		printf("OpenGL 2.0 or higher.\n");
-	} else {
-		printf("Sorry, this program requires OpenGL 2.0.\n");
-		return 1;
-	}
-#endif
+// 	if (GLEW_VERSION_2_0) {
+// 		printf("OpenGL 2.0 or higher.\n");
+// 	} else {
+// 		printf("Sorry, this program requires OpenGL 2.0.\n");
+// 		return 1;
+// 	}
+// #endif
 
 	// Finally we can do the regular initialization.
 	CheckGLExtensions();
@@ -357,9 +357,9 @@ int SDLGLGraphicsContext::Init(SDL_Window *&window, int x, int y, int mode, std:
 	assert(success);
 	renderManager_->SetSwapFunction([&]() {
 #ifdef USING_EGL
-		eglSwapBuffers(g_eglDisplay, g_eglSurface);
+		//eglSwapBuffers(g_eglDisplay, g_eglSurface);
 #else
-		SDL_GL_SwapWindow(window_);
+		//SDL_GL_SwapWindow(window_);
 #endif
 	});
 	window_ = window;
@@ -376,6 +376,6 @@ void SDLGLGraphicsContext::ShutdownFromRenderThread() {
 #ifdef USING_EGL
 	EGL_Close();
 #else
-	SDL_GL_DeleteContext(glContext);
+	//SDL_GL_DeleteContext(glContext);
 #endif
 }
