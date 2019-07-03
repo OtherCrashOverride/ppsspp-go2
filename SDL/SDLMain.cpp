@@ -632,14 +632,22 @@ int main(int argc, char *argv[]) {
 	graphicsContext->ThreadStart();
 
 	bool windowHidden = false;
+
+	int frame = 0;
+    double totalElapsed = 0.0;
+
+    Stopwatch_Reset();
+    Stopwatch_Start();
+
+
 	while (true) {
 		double startTime = time_now_d();
-// 		SDL_Event event, touchEvent;
-// 		while (SDL_PollEvent(&event)) {
+		SDL_Event event, touchEvent;
+		while (SDL_PollEvent(&event)) {
 // 			float mx = event.motion.x * g_dpi_scale_x;
 // 			float my = event.motion.y * g_dpi_scale_y;
 
-// 			switch (event.type) {
+			switch (event.type) {
 // 			case SDL_QUIT:
 // 				g_QuitRequested = 1;
 // 				break;
@@ -866,13 +874,13 @@ int main(int argc, char *argv[]) {
 // 					break;
 // 				}
 // 				break;
-// 			default:
+			default:
 				if (joystick) {
 					joystick->ProcessInput(event);
 				}
-// 				break;
-// 			}
-// 		}
+				break;
+			}
+		}
 		if (g_QuitRequested)
 			break;
 		const uint8_t *keys = SDL_GetKeyboardState(NULL);
@@ -904,6 +912,22 @@ int main(int argc, char *argv[]) {
 
 		//graphicsContext->SwapBuffers();
 		kms_window_swap_buffers2(window);
+
+ 
+        // Measure FPS
+		++frame;
+        totalElapsed += Stopwatch_Elapsed();
+
+        if (totalElapsed >= 1.0)
+        {
+            int fps = (int)(frame / totalElapsed);
+            fprintf(stderr, "FPS: %i\n", fps);
+
+            frame = 0;
+            totalElapsed = 0;
+        }
+
+        Stopwatch_Reset();
 
 		//ToggleFullScreenIfFlagSet(window);
 
