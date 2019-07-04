@@ -648,9 +648,9 @@ int main(int argc, char *argv[]) {
 // 			float my = event.motion.y * g_dpi_scale_y;
 
 			switch (event.type) {
-// 			case SDL_QUIT:
-// 				g_QuitRequested = 1;
-// 				break;
+			case SDL_QUIT:
+				g_QuitRequested = 1;
+				break;
 
 // #if !defined(MOBILE_DEVICE)
 // 			case SDL_WINDOWEVENT:
