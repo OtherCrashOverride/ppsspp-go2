@@ -5,7 +5,7 @@ project(PPSSPP)
 # SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -ldrm")
 # SET(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} -ldrm")
 
-find_package(Libdrm)
+
 
 #This is supposed to work but doesn't!
 if(NOT ANDROID)
@@ -191,6 +191,8 @@ endif()
 
 find_package(SDL2)
 include(FindThreads)
+
+find_package(Libdrm)
 
 if(APPLE)
 	find_library(COCOA_LIBRARY Cocoa)
