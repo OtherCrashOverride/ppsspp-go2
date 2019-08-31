@@ -26,11 +26,10 @@
 
 // #include "Egl.h"
 // #include "GL.h"
-extern "C" {
+
 #include <xf86drm.h>
 #include <xf86drmMode.h>
 #include <gbm.h>
-}
 
 #include <assert.h>
 #include <stdio.h>
@@ -44,6 +43,9 @@ extern "C" {
 
 #include <pthread.h>
 #include <semaphore.h>
+
+#include "RgaApi.h"
+#include <drm/drm_fourcc.h>
 
 
 static struct {
@@ -157,7 +159,7 @@ static int init_drm(void)
 	for (i = 0, area = 0; i < connector->count_modes; i++) {
 		drmModeModeInfo *current_mode = &connector->modes[i];
 
-#if 0
+#if 1
 		if (current_mode->type & DRM_MODE_TYPE_PREFERRED) {
 			drm.mode = current_mode;
 		}
@@ -220,11 +222,11 @@ static int init_drm(void)
 	return 0;
 }
 
-static int init_gbm(int visual_id)
+static int init_gbm(int visual_id, int width, int height)
 {
 
 	gbm.surface = gbm_surface_create(gbm.dev,
-			drm.mode->hdisplay, drm.mode->vdisplay,
+			width, height,
 			/*GBM_FORMAT_XRGB8888*/ visual_id,
 			GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
 	if (!gbm.surface) {
@@ -435,19 +437,17 @@ KmsWindow* kms_window_create()
 	init_drm();
 	result->display = gbm.dev;
 
-
-	// width = XDisplayWidth(display, 0);
-	result->width = drm.mode->hdisplay;
-	// height = XDisplayHeight(display, 0);
-	result->height = drm.mode->vdisplay;
+	// swap for rotation
+	result->width = drm.mode->vdisplay;
+	result->height = drm.mode->hdisplay;
 	printf("X11Window: width=%d, height=%d\n", result->width, result->height);
 
 
 	// Egl
 	result->eglDisplay = Egl_Intialize((NativeDisplayType)gbm.dev);
 
-	EGLConfig eglConfig = Egl_FindConfig(result->eglDisplay, 8, 8, 8, 8, 0, 0);
-	//EGLConfig eglConfig = Egl::FindConfig(eglDisplay, 8, 8, 8, 0, 24, 8);
+	//EGLConfig eglConfig = Egl_FindConfig(result->eglDisplay, 8, 8, 8, 8, 0, 0);
+	EGLConfig eglConfig = Egl_FindConfig(result->eglDisplay, 8, 8, 8, 8, 24, 8);
 	if (eglConfig == 0)
 	{
         printf("Compatible EGL config not found.\n");
@@ -459,7 +459,7 @@ KmsWindow* kms_window_create()
 	int xVisual;
 	eglGetConfigAttrib(result->eglDisplay, eglConfig, EGL_NATIVE_VISUAL_ID, &xVisual);
 
-	init_gbm(xVisual);
+	init_gbm(xVisual, result->width, result->height);
 
 
 
@@ -748,6 +748,7 @@ typedef struct swap_buffer
 {
 	struct gbm_bo *bo;
 	uint32_t drm_framebuffer;
+	int prime_fd;
 } swap_buffer_t;
 
 
@@ -759,18 +760,135 @@ swap_buffer_t* currentSwapBuffer = NULL;
 
 static swap_buffer_t* render_swapbuffer;
 
+typedef struct
+{
+	struct gbm_bo* dst_bo;
+	uint32_t dst_fb;
+	int prime_fd;
+} blit_buffer_t;
+
+#define BLIT_BUFFER_COUNT (2)
+
 static void *render_loop(void *handle_)
 {
 	int32_t sample;
+	blit_buffer_t blit_buffers[BLIT_BUFFER_COUNT];
+	int current_blit_buffer = 0;
+	int ret;
+	
+	ret = c_RkRgaInit();
+	if (ret)
+	{
+		printf("c_RkRgaInit failed.\n");
+		abort();
+	}
+
+	// bo_t bo_dst;
+	// ret = c_RkRgaGetAllocBuffer(&bo_dst, 320, 480, 32);
+	// if (ret)
+	// {
+	// 	printf("c_RkRgaGetAllocBuffer failed.\n");
+	// 	abort();
+	// }
+
+	// ret = c_RkRgaGetAllocBuffer(&bo_dst, 320, 480, 32);
+	// if (ret)
+	// {
+	// 	printf("c_RkRgaGetAllocBuffer failed.\n");
+	// 	abort();
+	// }
+
+
+	// ret = c_RkRgaGetMmap(&bo_dst);
+	// if (ret)
+	// {
+	// 	printf("c_RkRgaGetMmap failed.\n");
+	// 	abort();
+	// }
+
+	// memset(bo_dst.ptr, 0xff, bo_dst.size);
+
+	//ret = rkRga.RkRgaGetAllocBuffer(&bo_dst, dstWidth, dstHeight, 32);
+	
+	for (int i = 0; i < BLIT_BUFFER_COUNT; ++i)
+	{
+		blit_buffers[i].dst_bo = gbm_bo_create(gbm.dev, drm.mode->hdisplay, drm.mode->vdisplay, DRM_FORMAT_ARGB8888, 0);
+		if (!blit_buffers[i].dst_bo)
+		{
+			printf("gbm_bo_create failed.\n");
+			abort();
+		}
+
+		ret = drmModeAddFB(drm.fd, drm.mode->hdisplay, drm.mode->vdisplay, 24, 32,
+						   gbm_bo_get_stride(blit_buffers[i].dst_bo),
+						   gbm_bo_get_handle(blit_buffers[i].dst_bo).u32,
+						   &blit_buffers[i].dst_fb);
+		if (ret)
+		{
+			fprintf(stderr, "drmModeAddFB failed\n");
+			abort();
+		}
+
+		blit_buffers[i].prime_fd = gbm_bo_get_fd(blit_buffers[i].dst_bo);
+		if (blit_buffers[i].prime_fd < 0)
+		{
+			fprintf(stderr, "drmModeAddFB failed\n");
+			abort();
+		}
+	}
+
+	//printf("NOTE: CREATED FB: %d\n", dst_fb);
+
+	
+
 
 	for(;;)
 	{
 		sem_wait(&render_sem);
 
 
+    	rga_info_t dst = { 0 };
+		dst.fd = blit_buffers[current_blit_buffer].prime_fd;
+		dst.mmuFlag = 1;
+		//dst.format = RK_FORMAT_RGBA_8888;
+		//dst.rotation = HAL_TRANSFORM_ROT_90;
+		dst.rect.xoffset = 0;
+		dst.rect.yoffset = 0;
+		dst.rect.width = drm.mode->hdisplay;
+		dst.rect.height = drm.mode->vdisplay;
+		dst.rect.wstride = dst.rect.width;
+		dst.rect.hstride = dst.rect.height;
+		dst.rect.format = RK_FORMAT_RGBA_8888;
+
+   		rga_info_t src = { 0 };
+		src.fd = render_swapbuffer->prime_fd;
+		src.mmuFlag = 1;
+		//src.format = RK_FORMAT_RGBA_8888;
+		src.rotation = HAL_TRANSFORM_ROT_270;
+		src.rect.xoffset = 0;
+		src.rect.yoffset = 0;
+		src.rect.width = drm.mode->vdisplay; // rotated
+		src.rect.height = drm.mode->hdisplay; // rotated
+		src.rect.wstride = src.rect.width;
+		src.rect.hstride = src.rect.height;
+		src.rect.format = RK_FORMAT_RGBA_8888;
+
+
+#if 1
+		ret = c_RkRgaBlit(&src, &dst, NULL);
+		if (ret)
+		{
+			printf("c_RkRgaBlit failed.\n");
+			abort();
+		}
+#endif
+
+		gbm_surface_release_buffer(gbm.surface, render_swapbuffer->bo);
+
 		if (!currentSwapBuffer)
 		{
-			int ret = drmModeSetCrtc(drm.fd, drm.crtc_id, render_swapbuffer->drm_framebuffer, 0, 0, &drm.connector_id, 1, drm.mode);
+			//int ret = drmModeSetCrtc(drm.fd, drm.crtc_id, render_swapbuffer->drm_framebuffer, 0, 0, &drm.connector_id, 1, drm.mode);
+			int ret = drmModeSetCrtc(drm.fd, drm.crtc_id, blit_buffers[current_blit_buffer].dst_fb, 0, 0, &drm.connector_id, 1, drm.mode);
 			if (ret)
 			{
 				printf("failed to set mode: %s\n", strerror(errno));
@@ -786,17 +904,22 @@ static void *render_loop(void *handle_)
 			// 	abort(); //return;
 			// }
 
-			int ret = drmModeSetCrtc(drm.fd, drm.crtc_id, render_swapbuffer->drm_framebuffer, 0, 0, &drm.connector_id, 1, drm.mode);
+			//int ret = drmModeSetCrtc(drm.fd, drm.crtc_id, render_swapbuffer->drm_framebuffer, 0, 0, &drm.connector_id, 1, drm.mode);
+			int ret = drmModeSetCrtc(drm.fd, drm.crtc_id, blit_buffers[current_blit_buffer].dst_fb, 0, 0, &drm.connector_id, 1, drm.mode);
 			if (ret)
 			{
 				printf("failed to set mode: %s\n", strerror(errno));
 				//return ret;
 			}
 
-			gbm_surface_release_buffer(gbm.surface, currentSwapBuffer->bo);
+			
 		}
 
 		currentSwapBuffer = render_swapbuffer;
+
+		++current_blit_buffer;
+		if (current_blit_buffer >= BLIT_BUFFER_COUNT)
+			current_blit_buffer = 0;
 
 		sem_post(&render_done_sem);
 	}
@@ -856,7 +979,9 @@ void kms_window_swap_buffers2(KmsWindow* window)
 			return;
 		}
 
-		printf("added swapbuffer - bo=%p, count=%d\n", bo, swapBufferCount);
+		swapBuffer->prime_fd = gbm_bo_get_fd(bo);
+
+		printf("added swapbuffer - bo=%p, prime_fd=%d, count=%d\n", bo, swapBuffer->prime_fd, swapBufferCount);
 	}
 
 #if 0

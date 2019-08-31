@@ -453,8 +453,8 @@ int main(int argc, char *argv[]) {
 // 		fprintf(stderr, "Could not get display mode: %s\n", SDL_GetError());
 // 		return 1;
 // 	}
-	g_DesktopWidth = 1280; //displayMode.w;
-	g_DesktopHeight = 720; //displayMode.h;
+	g_DesktopWidth = window->width; //displayMode.w;
+	g_DesktopHeight = window->height; //displayMode.h;
 
 // 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 // 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
