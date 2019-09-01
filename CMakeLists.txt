@@ -843,6 +843,7 @@ elseif(TARGET SDL2::SDL2)
 		SDL/SDLGLGraphicsContext.cpp
 		SDL/SDLVulkanGraphicsContext.cpp
 		SDL/odroid.cpp
+		SDL/go2input.cpp
 		SDL/kms_window.cpp
 	)
 	set(nativeExtraLibs ${nativeExtraLibs} SDL2::SDL2)
@@ -853,7 +854,7 @@ elseif(TARGET SDL2::SDL2)
 		set(nativeExtraLibs ${nativeExtraLibs} pthread)
 	endif()
 	set(TargetBin PPSSPPSDL)
-	set(nativeExtraLibs ${nativeExtraLibs} drm gbm rga)
+	set(nativeExtraLibs ${nativeExtraLibs} drm gbm rga evdev)
 else()
 	message(FATAL_ERROR "Could not find SDL2. Failing.")
 endif()

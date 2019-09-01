@@ -10,46 +10,48 @@ using namespace std;
 
 static int SDLJoystickEventHandlerWrapper(void* userdata, SDL_Event* event)
 {
-	static_cast<SDLJoystick *>(userdata)->ProcessInput(*event);
+	//static_cast<SDLJoystick *>(userdata)->ProcessInput(*event);
 	return 0;
 }
 
 SDLJoystick::SDLJoystick(bool init_SDL ) : registeredAsEventHandler(false) {
-	SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
-	if (init_SDL) {
-		SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
-	}
+	// SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+	// if (init_SDL) {
+	// 	SDL_Init(SDL_INIT_JOYSTICK | SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
+	// }
 
-	const char *dbPath = "gamecontrollerdb.txt";
-	cout << "loading control pad mappings from " << dbPath << ": ";
+	// const char *dbPath = "gamecontrollerdb.txt";
+	// cout << "loading control pad mappings from " << dbPath << ": ";
 
-	size_t size;
-	u8 *mappingData = VFSReadFile(dbPath, &size);
-	if (mappingData) {
-		SDL_RWops *rw = SDL_RWFromConstMem(mappingData, size);
-		// 1 to free the rw after use
-		if (SDL_GameControllerAddMappingsFromRW(rw, 1) == -1) {
-			cout << "Failed to read mapping data - corrupt?" << endl;
-		}
-		delete[] mappingData;
-	} else {
-		cout << "gamecontrollerdb.txt missing" << endl;
-	}
-	cout << "SUCCESS!" << endl;
-	setUpControllers();
+	// size_t size;
+	// u8 *mappingData = VFSReadFile(dbPath, &size);
+	// if (mappingData) {
+	// 	SDL_RWops *rw = SDL_RWFromConstMem(mappingData, size);
+	// 	// 1 to free the rw after use
+	// 	if (SDL_GameControllerAddMappingsFromRW(rw, 1) == -1) {
+	// 		cout << "Failed to read mapping data - corrupt?" << endl;
+	// 	}
+	// 	delete[] mappingData;
+	// } else {
+	// 	cout << "gamecontrollerdb.txt missing" << endl;
+	// }
+	// cout << "SUCCESS!" << endl;
+	// setUpControllers();
 }
 
 void SDLJoystick::setUpControllers() {
-	int numjoys = SDL_NumJoysticks();
-	for (int i = 0; i < numjoys; i++) {
-		setUpController(i);
-	}
-	if (controllers.size() > 0) {
-		cout << "pad 1 has been assigned to control pad: " << SDL_GameControllerName(controllers.front()) << endl;
-	}
+	// int numjoys = SDL_NumJoysticks();
+	// for (int i = 0; i < numjoys; i++) {
+	// 	setUpController(i);
+	// }
+	// if (controllers.size() > 0) {
+	// 	cout << "pad 1 has been assigned to control pad: " << SDL_GameControllerName(controllers.front()) << endl;
+	// }
 }
 
 void SDLJoystick::setUpController(int deviceIndex) {
+	return;
+
 	if (!SDL_IsGameController(deviceIndex)) {
 		cout << "Control pad device " << deviceIndex << " not supported by SDL game controller database, attempting to create default mapping..." << endl;
 		int cbGUID = 33;
@@ -85,17 +87,17 @@ void SDLJoystick::setUpController(int deviceIndex) {
 }
 
 SDLJoystick::~SDLJoystick() {
-	if (registeredAsEventHandler) {
-		SDL_DelEventWatch(SDLJoystickEventHandlerWrapper, this);
-	}
-	for (auto & controller : controllers) {
-		SDL_GameControllerClose(controller);
-	}
+	// if (registeredAsEventHandler) {
+	// 	SDL_DelEventWatch(SDLJoystickEventHandlerWrapper, this);
+	// }
+	// for (auto & controller : controllers) {
+	// 	SDL_GameControllerClose(controller);
+	// }
 }
 
 void SDLJoystick::registerEventHandler() {
-	SDL_AddEventWatch(SDLJoystickEventHandlerWrapper, this);
-	registeredAsEventHandler = true;
+	// SDL_AddEventWatch(SDLJoystickEventHandlerWrapper, this);
+	// registeredAsEventHandler = true;
 }
 
 keycode_t SDLJoystick::getKeycodeForButton(SDL_GameControllerButton button) {
@@ -137,6 +139,8 @@ keycode_t SDLJoystick::getKeycodeForButton(SDL_GameControllerButton button) {
 }
 
 void SDLJoystick::ProcessInput(SDL_Event &event){
+	return;
+	
 	switch (event.type) {
 	case SDL_CONTROLLERBUTTONDOWN:
 		if (event.cbutton.state == SDL_PRESSED) {
