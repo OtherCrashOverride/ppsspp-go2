@@ -664,12 +664,16 @@ int main(int argc, char *argv[]) {
 	go2_gamepad_state_t gamepad_previous = {0};
 	go2_gamepad_state_t gamepad_curent = {0};
 
-	while (true) 
+	bool isRunning = true;
+	while (isRunning) 
 	{
 		double startTime = time_now_d();
 
 
 		go2_input_gamepad_read(input, &gamepad_curent);
+
+		if (gamepad_curent.buttons.f1)
+			isRunning = false;
 
 		if (gamepad_curent.dpad.left != gamepad_previous.dpad.left)
 		{
