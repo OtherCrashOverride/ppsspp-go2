@@ -80,6 +80,7 @@ PARSERS="\
     --enable-parser=aac \
     --enable-parser=aac_latm"
 
+ARG1=${1}
 
 function build_ARM64
 {
@@ -100,7 +101,7 @@ function build_ARM64
     ${MUXERS} \
     ${PARSERS}
 make clean
-make install
+make install ${ARG1}
 }
 
 build_ARM64
