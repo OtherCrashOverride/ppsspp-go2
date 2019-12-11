@@ -56,9 +56,10 @@ SDLJoystick *joystick = NULL;
 #include "SDLGLGraphicsContext.h"
 #include "SDLVulkanGraphicsContext.h"
 
-#include "odroid.h"
-#include "kms_window.h"
-#include "go2input.h"
+#include <go2/input.h>
+#include <go2/display.h>
+#include <drm/drm_fourcc.h>
+
 
 GlobalUIState lastUIState = UISTATE_MENU;
 GlobalUIState GetUIState();
@@ -437,8 +438,25 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	KmsWindow* window = kms_window_create();
-	go2_gamepad_init();
+	go2_display_t* display = go2_display_create();
+	
+	go2_context_attributes_t attr;
+	attr.major = 2;
+	attr.minor = 0;
+	attr.red_bits = 8;
+	attr.green_bits = 8;
+	attr.blue_bits = 8;
+	attr.alpha_bits = 8;
+	attr.depth_bits = 24;
+	attr.stencil_bits = 0;
+	
+	go2_context_t* context = go2_context_create(display, 480, 320, &attr);
+	go2_context_make_current(context);
+
+	go2_presenter_t* presenter = go2_presenter_create(display, DRM_FORMAT_RGB565, 0xff080808);
+
+
+	go2_input_t* input = go2_input_create();
 
 	//joystick_enabled = false;
 
@@ -456,8 +474,8 @@ int main(int argc, char *argv[]) {
 // 		fprintf(stderr, "Could not get display mode: %s\n", SDL_GetError());
 // 		return 1;
 // 	}
-	g_DesktopWidth = window->width; //displayMode.w;
-	g_DesktopHeight = window->height; //displayMode.h;
+	g_DesktopWidth = 480; //displayMode.w;
+	g_DesktopHeight = 320; //displayMode.h;
 
 // 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 // 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -639,19 +657,19 @@ int main(int argc, char *argv[]) {
 	int frame = 0;
     double totalElapsed = 0.0;
 
-    Stopwatch_Reset();
-    Stopwatch_Start();
+    // Stopwatch_Reset();
+    // Stopwatch_Start();
 
 
-	go2_gamepad_t gamepad_previous = {0};
-	go2_gamepad_t gamepad_curent = {0};
+	go2_gamepad_state_t gamepad_previous = {0};
+	go2_gamepad_state_t gamepad_curent = {0};
 
 	while (true) 
 	{
 		double startTime = time_now_d();
 
 
-		go2_gamepad_read(&gamepad_curent);
+		go2_input_gamepad_read(input, &gamepad_curent);
 
 		if (gamepad_curent.dpad.left != gamepad_previous.dpad.left)
 		{
@@ -794,24 +812,20 @@ int main(int argc, char *argv[]) {
 
 
 		//graphicsContext->SwapBuffers();
-		kms_window_swap_buffers2(window);
+		
+		go2_context_swap_buffers(context);
+
+		go2_surface_t* surface = go2_context_surface_lock(context);
+
+
+		go2_presenter_post(presenter,
+					surface,
+					0, 0, 480, 320,
+					0, 0, 320, 480,
+					GO2_ROTATION_DEGREES_270);
+		go2_context_surface_unlock(context, surface);
 
  
-        // Measure FPS
-		++frame;
-        totalElapsed += Stopwatch_Elapsed();
-
-        if (totalElapsed >= 1.0)
-        {
-            int fps = (int)(frame / totalElapsed);
-            fprintf(stderr, "FPS: %i\n", fps);
-
-            frame = 0;
-            totalElapsed = 0;
-        }
-
-        Stopwatch_Reset();
-
 		//ToggleFullScreenIfFlagSet(window);
 
 		// Simple throttling to not burn the GPU in the menu.
