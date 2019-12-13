@@ -721,34 +721,34 @@ int main(int argc, char *argv[]) {
 		return NKCODE_BUTTON_THUMBR;
 #endif
 
-		if (gamepad_curent.buttons.a != gamepad_previous.buttons.a) // X
+		if (gamepad_curent.buttons.a != gamepad_previous.buttons.a) // circle
 		{
 			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_3, gamepad_curent.buttons.a ? KEY_DOWN : KEY_UP);
 			NativeKey(key);
 		}
-		if (gamepad_curent.buttons.b != gamepad_previous.buttons.b) // O
+		if (gamepad_curent.buttons.b != gamepad_previous.buttons.b) // cross
 		{
 			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_2, gamepad_curent.buttons.b ? KEY_DOWN : KEY_UP);
 			NativeKey(key);
 		}
-		if (gamepad_curent.buttons.x != gamepad_previous.buttons.x) // (square)
+		if (gamepad_curent.buttons.x != gamepad_previous.buttons.x) // triangle
 		{
-			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_4, gamepad_curent.buttons.x ? KEY_DOWN : KEY_UP);
+			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_1, gamepad_curent.buttons.x ? KEY_DOWN : KEY_UP);
 			NativeKey(key);
 		}
-		if (gamepad_curent.buttons.y != gamepad_previous.buttons.y) // (triangle)
+		if (gamepad_curent.buttons.y != gamepad_previous.buttons.y) // square
 		{
-			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_1, gamepad_curent.buttons.y ? KEY_DOWN : KEY_UP);
+			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_4, gamepad_curent.buttons.y ? KEY_DOWN : KEY_UP);
 			NativeKey(key);
 		}
 		if (gamepad_curent.buttons.top_left != gamepad_previous.buttons.top_left)
 		{
-			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_6, gamepad_curent.buttons.top_left ? KEY_DOWN : KEY_UP);
+			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_7, gamepad_curent.buttons.top_left ? KEY_DOWN : KEY_UP);
 			NativeKey(key);
 		}
 		if (gamepad_curent.buttons.top_right != gamepad_previous.buttons.top_right)
 		{
-			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_5, gamepad_curent.buttons.top_right ? KEY_DOWN : KEY_UP);
+			KeyInput key(DEVICE_ID_PAD_0, NKCODE_BUTTON_8, gamepad_curent.buttons.top_right ? KEY_DOWN : KEY_UP);
 			NativeKey(key);
 		}
 		if (gamepad_curent.buttons.f3 != gamepad_previous.buttons.f3) // SELECT
