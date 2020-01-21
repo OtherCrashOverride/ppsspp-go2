@@ -589,7 +589,7 @@ void FramebufferManagerCommon::NotifyRenderFramebufferSwitched(VirtualFramebuffe
 	shaderManager_->DirtyLastShader();
 
 	// Copy depth pixel value from the read framebuffer to the draw framebuffer
-	if (prevVfb) {
+	if (prevVfb && !g_Config.bDisableSlowFramebufEffects) {
 		bool hasNewerDepth = prevVfb->last_frame_depth_render != 0 && prevVfb->last_frame_depth_render >= vfb->last_frame_depth_updated;
 		if (!prevVfb->fbo || !vfb->fbo || !useBufferedRendering_ || !hasNewerDepth || isClearingDepth) {
 			// If depth wasn't updated, then we're at least "two degrees" away from the data.
@@ -1140,7 +1140,7 @@ void FramebufferManagerCommon::ResizeFramebufFBO(VirtualFramebuffer *vfb, int w,
 			draw_->BindFramebufferAsRenderTarget(vfb->fbo, { Draw::RPAction::CLEAR, Draw::RPAction::CLEAR, Draw::RPAction::CLEAR });
 			// GLES resets the blend state on clears.
 			gstate_c.Dirty(DIRTY_BLEND_STATE);
-			if (!skipCopy) {
+			if (!skipCopy && !g_Config.bDisableSlowFramebufEffects) {
 				BlitFramebuffer(vfb, 0, 0, &old, 0, 0, std::min((u16)oldWidth, std::min(vfb->bufferWidth, vfb->width)), std::min((u16)oldHeight, std::min(vfb->height, vfb->bufferHeight)), 0);
 			}
 		}
@@ -1243,9 +1243,11 @@ bool FramebufferManagerCommon::NotifyFramebufferCopy(u32 src, u32 dst, int size,
 		} else {
 			WARN_LOG_REPORT_ONCE(dstnotsrccpy, G3D, "Inter-buffer memcpy %08x -> %08x", src, dst);
 			// Just do the blit!
-			BlitFramebuffer(dstBuffer, 0, dstY, srcBuffer, 0, srcY, srcBuffer->width, srcH, 0);
-			SetColorUpdated(dstBuffer, skipDrawReason);
-			RebindFramebuffer();
+			if (g_Config.bBlockTransferGPU) {
+				BlitFramebuffer(dstBuffer, 0, dstY, srcBuffer, 0, srcY, srcBuffer->width, srcH, 0);
+				SetColorUpdated(dstBuffer, skipDrawReason);
+				RebindFramebuffer();
+			}
 		}
 		return false;
 	} else if (dstBuffer) {
@@ -1253,12 +1255,15 @@ bool FramebufferManagerCommon::NotifyFramebufferCopy(u32 src, u32 dst, int size,
 			gpuStats.numClears++;
 		}
 		WARN_LOG_ONCE(btucpy, G3D, "Memcpy fbo upload %08x -> %08x", src, dst);
-		FlushBeforeCopy();
-		const u8 *srcBase = Memory::GetPointerUnchecked(src);
-		DrawPixels(dstBuffer, 0, dstY, srcBase, dstBuffer->format, dstBuffer->fb_stride, dstBuffer->width, dstH);
-		SetColorUpdated(dstBuffer, skipDrawReason);
-		RebindFramebuffer();
-		// This is a memcpy, let's still copy just in case.
+		if (g_Config.bBlockTransferGPU) {
+			FlushBeforeCopy();
+			const u8 *srcBase = Memory::GetPointerUnchecked(src);
+			DrawPixels(dstBuffer, 0, dstY, srcBase, dstBuffer->format, dstBuffer->fb_stride, dstBuffer->width, dstH);
+			SetColorUpdated(dstBuffer, skipDrawReason);
+			RebindFramebuffer();
+			// This is a memcpy, let's still copy just in case.
+			return false;
+		}
 		return false;
 	} else if (srcBuffer) {
 		WARN_LOG_ONCE(btdcpy, G3D, "Memcpy fbo download %08x -> %08x", src, dst);
@@ -1596,23 +1601,29 @@ bool FramebufferManagerCommon::NotifyBlockTransferBefore(u32 dstBasePtr, int dst
 		if (srcBuffer == dstBuffer) {
 			if (srcX != dstX || srcY != dstY) {
 				WARN_LOG_ONCE(dstsrc, G3D, "Intra-buffer block transfer %08x -> %08x", srcBasePtr, dstBasePtr);
-				FlushBeforeCopy();
-				BlitFramebuffer(dstBuffer, dstX, dstY, srcBuffer, srcX, srcY, dstWidth, dstHeight, bpp);
-				RebindFramebuffer();
-				SetColorUpdated(dstBuffer, skipDrawReason);
-				return true;
+				if (g_Config.bBlockTransferGPU) {
+					FlushBeforeCopy();
+					BlitFramebuffer(dstBuffer, dstX, dstY, srcBuffer, srcX, srcY, dstWidth, dstHeight, bpp);
+					RebindFramebuffer();
+					SetColorUpdated(dstBuffer, skipDrawReason);
+					return true;
+				}
 			} else {
 				// Ignore, nothing to do.  Tales of Phantasia X does this by accident.
-				return true;
+				if (g_Config.bBlockTransferGPU) {
+					return true;
+				}
 			}
 		} else {
 			WARN_LOG_ONCE(dstnotsrc, G3D, "Inter-buffer block transfer %08x -> %08x", srcBasePtr, dstBasePtr);
 			// Just do the blit!
-			FlushBeforeCopy();
-			BlitFramebuffer(dstBuffer, dstX, dstY, srcBuffer, srcX, srcY, dstWidth, dstHeight, bpp);
-			RebindFramebuffer();
-			SetColorUpdated(dstBuffer, skipDrawReason);
-			return true;  // No need to actually do the memory copy behind, probably.
+			if (g_Config.bBlockTransferGPU) {
+				FlushBeforeCopy();
+				BlitFramebuffer(dstBuffer, dstX, dstY, srcBuffer, srcX, srcY, dstWidth, dstHeight, bpp);
+				RebindFramebuffer();
+				SetColorUpdated(dstBuffer, skipDrawReason);
+				return true;  // No need to actually do the memory copy behind, probably.
+			}
 		}
 		return false;
 	} else if (dstBuffer) {
@@ -1670,24 +1681,26 @@ void FramebufferManagerCommon::NotifyBlockTransferAfter(u32 dstBasePtr, int dstS
 
 		if (dstBuffer && !srcBuffer) {
 			WARN_LOG_ONCE(btu, G3D, "Block transfer upload %08x -> %08x", srcBasePtr, dstBasePtr);
-			FlushBeforeCopy();
-			const u8 *srcBase = Memory::GetPointerUnchecked(srcBasePtr) + (srcX + srcY * srcStride) * bpp;
-			int dstBpp = dstBuffer->format == GE_FORMAT_8888 ? 4 : 2;
-			float dstXFactor = (float)bpp / dstBpp;
-			if (dstWidth > dstBuffer->width || dstHeight > dstBuffer->height) {
-				// The buffer isn't big enough, and we have a clear hint of size.  Resize.
-				// This happens in Valkyrie Profile when uploading video at the ending.
-				ResizeFramebufFBO(dstBuffer, dstWidth, dstHeight, false, true);
-				// Make sure we don't flop back and forth.
-				dstBuffer->newWidth = std::max(dstWidth, (int)dstBuffer->width);
-				dstBuffer->newHeight = std::max(dstHeight, (int)dstBuffer->height);
-				dstBuffer->lastFrameNewSize = gpuStats.numFlips;
-				// Resizing may change the viewport/etc.
-				gstate_c.Dirty(DIRTY_VIEWPORTSCISSOR_STATE | DIRTY_CULLRANGE);
+			if (g_Config.bBlockTransferGPU) {
+				FlushBeforeCopy();
+				const u8 *srcBase = Memory::GetPointerUnchecked(srcBasePtr) + (srcX + srcY * srcStride) * bpp;
+				int dstBpp = dstBuffer->format == GE_FORMAT_8888 ? 4 : 2;
+				float dstXFactor = (float)bpp / dstBpp;
+				if (dstWidth > dstBuffer->width || dstHeight > dstBuffer->height) {
+					// The buffer isn't big enough, and we have a clear hint of size.  Resize.
+					// This happens in Valkyrie Profile when uploading video at the ending.
+					ResizeFramebufFBO(dstBuffer, dstWidth, dstHeight, false, true);
+					// Make sure we don't flop back and forth.
+					dstBuffer->newWidth = std::max(dstWidth, (int)dstBuffer->width);
+					dstBuffer->newHeight = std::max(dstHeight, (int)dstBuffer->height);
+					dstBuffer->lastFrameNewSize = gpuStats.numFlips;
+					// Resizing may change the viewport/etc.
+					gstate_c.Dirty(DIRTY_VIEWPORTSCISSOR_STATE | DIRTY_CULLRANGE);
+				}
+				DrawPixels(dstBuffer, static_cast<int>(dstX * dstXFactor), dstY, srcBase, dstBuffer->format, static_cast<int>(srcStride * dstXFactor), static_cast<int>(dstWidth * dstXFactor), dstHeight);
+				SetColorUpdated(dstBuffer, skipDrawReason);
+				RebindFramebuffer();
 			}
-			DrawPixels(dstBuffer, static_cast<int>(dstX * dstXFactor), dstY, srcBase, dstBuffer->format, static_cast<int>(srcStride * dstXFactor), static_cast<int>(dstWidth * dstXFactor), dstHeight);
-			SetColorUpdated(dstBuffer, skipDrawReason);
-			RebindFramebuffer();
 		}
 	}
 }
