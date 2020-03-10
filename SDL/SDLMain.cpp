@@ -529,7 +529,7 @@ int main(int argc, char *argv[]) {
 // 	if (set_yres > 0) {
 // 		pixel_yres = set_yres;
 // 	}
- 	float dpi_scale = 1.0f;
+ 	float dpi_scale = 2.0f;
 // 	if (set_dpi > 0) {
 // 		dpi_scale = set_dpi;
 // 	}
