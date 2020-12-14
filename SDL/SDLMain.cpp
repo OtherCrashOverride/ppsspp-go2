@@ -439,7 +439,9 @@ int main(int argc, char *argv[]) {
 	}
 
 	go2_display_t* display = go2_display_create();
-	
+	int dw = go2_display_height_get(display);
+    int dh = go2_display_width_get(display);
+
 	go2_context_attributes_t attr;
 	attr.major = 2;
 	attr.minor = 0;
@@ -450,7 +452,7 @@ int main(int argc, char *argv[]) {
 	attr.depth_bits = 24;
 	attr.stencil_bits = 0;
 	
-	go2_context_t* context = go2_context_create(display, 480, 320, &attr);
+	go2_context_t* context = go2_context_create(display, dw, dh, &attr);
 	go2_context_make_current(context);
 
 	go2_presenter_t* presenter = go2_presenter_create(display, DRM_FORMAT_RGB565, 0xff080808);
@@ -474,8 +476,8 @@ int main(int argc, char *argv[]) {
 // 		fprintf(stderr, "Could not get display mode: %s\n", SDL_GetError());
 // 		return 1;
 // 	}
-	g_DesktopWidth = 480; //displayMode.w;
-	g_DesktopHeight = 320; //displayMode.h;
+	g_DesktopWidth = dw; //displayMode.w;
+	g_DesktopHeight = dh; //displayMode.h;
 
 // 	SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
 // 	SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -824,8 +826,8 @@ int main(int argc, char *argv[]) {
 
 		go2_presenter_post(presenter,
 					surface,
-					0, 0, 480, 320,
-					0, 0, 320, 480,
+					0, 0, dw, dh,
+					0, 0, dh, dw,
 					GO2_ROTATION_DEGREES_270);
 		go2_context_surface_unlock(context, surface);
 
