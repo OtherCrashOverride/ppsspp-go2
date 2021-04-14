@@ -58,6 +58,8 @@ SDLJoystick *joystick = NULL;
 
 #include <go2/input.h>
 #include <go2/display.h>
+#include <go2/audio.h>
+
 #include <drm/drm_fourcc.h>
 
 
@@ -70,6 +72,25 @@ static int g_QuitRequested = 0;
 
 static int g_DesktopWidth = 0;
 static int g_DesktopHeight = 0;
+
+
+#define AUDIO_SAMPLE_RATE (44100)
+#define AUDIO_FRAMES_MAX (AUDIO_SAMPLE_RATE / 60)
+static int audioData[AUDIO_FRAMES_MAX];
+static bool runAudio = true;
+
+void audioThread()
+{
+	go2_audio_t* audio = go2_audio_create(AUDIO_SAMPLE_RATE);
+
+	while(runAudio)
+	{
+		NativeMix((short *)audioData, AUDIO_FRAMES_MAX);
+		go2_audio_submit(audio, (const short*)audioData, AUDIO_FRAMES_MAX);
+	}
+
+	go2_audio_destroy(audio);
+}
 
 int getDisplayNumber(void) {
 	int displayNumber = 0;
@@ -622,6 +643,7 @@ int main(int argc, char *argv[]) {
 	fmt.callback = &mixaudio;
 	fmt.userdata = (void *)0;
 
+#if 0
 	if (SDL_OpenAudio(&fmt, &ret_fmt) < 0) {
 		ELOG("Failed to open audio: %s", SDL_GetError());
 	} else {
@@ -639,6 +661,10 @@ int main(int argc, char *argv[]) {
 
 	// Audio must be unpaused _after_ NativeInit()
 	SDL_PauseAudio(0);
+#endif
+
+	std::thread audio_thread(audioThread);
+
 	if (joystick_enabled) {
 		joystick = new SDLJoystick();
 	} else {
@@ -847,6 +873,9 @@ int main(int argc, char *argv[]) {
 		framecount++;
 	}
 
+	runAudio = false;
+	audio_thread.join();
+
 	if (useEmuThread) {
 		EmuThreadStop();
 		while (graphicsContext->ThreadFrame()) {
@@ -869,7 +898,7 @@ int main(int argc, char *argv[]) {
 	graphicsContext->ShutdownFromRenderThread();
 	delete graphicsContext;
 
-	SDL_PauseAudio(1);
+	//SDL_PauseAudio(1);
 	SDL_CloseAudio();
 	SDL_Quit();
 // #if PPSSPP_PLATFORM(RPI)
